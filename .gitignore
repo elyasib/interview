@@ -9,7 +9,7 @@ TAGS
 .#*
 .lib
 .history
-.*.swp
+.*.sw*
 .idea
 .idea/*
 .idea_modules
