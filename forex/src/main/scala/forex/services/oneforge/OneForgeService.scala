@@ -51,7 +51,7 @@ case class OneForgeServiceLive(
 
   val refreshCacheTask = client.fetchRates.flatMap {
       case Left(e) ⇒
-        logger.error("Failed to refresh the cache", e)
+        logger.error("Failed to refresh the cache. reason={}", e.reason)
         Task.raiseError(new RuntimeException)
       case Right(rates) ⇒
         cache.update(rates)

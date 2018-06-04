@@ -8,6 +8,7 @@ import forex.domain.{ Currency, Rate }
 import Rate.Pair
 import Currency.fromString
 import com.typesafe.scalalogging.LazyLogging
+import forex.domain.oneforge.OneForgeApiError
 import forex.main.{ ActorSystems, Executors }
 import monix.eval.{ Task, TaskCircuitBreaker }
 import org.zalando.grafter.macros.{ defaultReader, readerOf }
@@ -27,7 +28,8 @@ case class AkkaHttpClient(
 ) extends Client
     with LazyLogging {
   import forex.domain.oneforge.OneForgeQuote
-  import OneForgeQuote._
+  import forex.domain.oneforge.OneForgeResponse._
+  import cats.implicits._
 
   implicit val executor = executors.default
   implicit val system = actorSystems.system
@@ -48,13 +50,21 @@ case class AkkaHttpClient(
     Http()
       .singleRequest(request)
       .flatMap {
-        case HttpResponse(StatusCodes.OK, _, entity, _) ⇒
+        case r @ HttpResponse(status, _, entity, _) if status.intValue == 200 ⇒
           Unmarshal(entity)
-            .to[List[OneForgeQuote]]
-            .map(quotes ⇒ quotes.map(toRate))
-            .map(Right(_))
+            .to[OneForgeApiError Either List[OneForgeQuote]]
+            .map {
+              case Left(e) ⇒
+                ErrorResponse(e.message).asLeft[Seq[Rate]]
+              case Right(quotes) ⇒
+                quotes.map(toRate).asRight[ClientError]
+            }
         case HttpResponse(_, _, entity, _) ⇒
+          logger.info("error")
           Unmarshal(entity).to[String].map(errorReason ⇒ Left(ErrorResponse(errorReason)))
+        case x ⇒
+          logger.info("error 2")
+          Future.successful(Left(ErrorResponse("error")))
       }
 
   private def toRate(quote: OneForgeQuote): Rate =
