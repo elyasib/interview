@@ -5,19 +5,21 @@ import forex.domain.{ Price, Timestamp }
 import io.circe.{ Decoder, HCursor }
 import io.circe.generic.semiauto._
 
-case class OneForgeQuote(
+trait OneForgeApiResponse
+
+case class OneForgeApiQuote(
     symbol: String,
     price: Price,
     bid: Price,
     ask: Price,
     timestamp: Timestamp
-)
+) extends OneForgeApiResponse
 
-case class OneForgeApiError(error: Boolean, message: String)
+case class OneForgeApiErrorResponse(error: Boolean, message: String)
 
-object OneForgeResponse extends FailFastCirceSupport {
-  implicit val quoteDecoder: Decoder[OneForgeQuote] = deriveDecoder[OneForgeQuote]
-  implicit val errorDecoder: Decoder[OneForgeApiError] = deriveDecoder[OneForgeApiError]
+object OneForgeApiResponse extends FailFastCirceSupport {
+  implicit val quoteDecoder: Decoder[OneForgeApiQuote] = deriveDecoder[OneForgeApiQuote]
+  implicit val errorDecoder: Decoder[OneForgeApiErrorResponse] = deriveDecoder[OneForgeApiErrorResponse]
   implicit def decodeEither[A, B](
       implicit
       decoderA: Decoder[A],

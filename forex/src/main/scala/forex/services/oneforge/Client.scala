@@ -1,17 +1,15 @@
 package forex.services.oneforge
 
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ HttpMethods, HttpRequest, HttpResponse, StatusCodes }
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import forex.config.{ ApplicationConfig, RatesServiceConfig }
-import forex.domain.{ Currency, Rate }
-import Rate.Pair
-import Currency.fromString
+import akka.http.scaladsl.model._
+import forex.config.{ApplicationConfig, RatesServiceConfig}
+import forex.domain.{Currency, Rate}
 import com.typesafe.scalalogging.LazyLogging
-import forex.domain.oneforge.OneForgeApiError
-import forex.main.{ ActorSystems, Executors }
-import monix.eval.{ Task, TaskCircuitBreaker }
-import org.zalando.grafter.macros.{ defaultReader, readerOf }
+import forex.main.{ActorSystems, Executors}
+import monix.eval.Task
+import org.zalando.grafter.macros.{defaultReader, readerOf}
+import cats.implicits._
+import forex.services.oneforge.ClientError.UnknownError
 
 import scala.concurrent.Future
 
@@ -22,22 +20,18 @@ trait Client {
 
 @readerOf[ApplicationConfig]
 case class AkkaHttpClient(
-    ratesServiceConfig: RatesServiceConfig,
+    config: RatesServiceConfig,
     actorSystems: ActorSystems,
     executors: Executors
 ) extends Client
     with LazyLogging {
-  import forex.domain.oneforge.OneForgeQuote
-  import forex.domain.oneforge.OneForgeResponse._
-  import cats.implicits._
+  import forex.services.oneforge.client.OneForgeResponseHandler._
 
-  implicit val executor = executors.default
-  implicit val system = actorSystems.system
-  implicit val materializer = actorSystems.materializer
-  val apiKey = ratesServiceConfig.client.apiKey
-  val url = ratesServiceConfig.client.url
-    .replace("{API_KEY}", apiKey)
-    .replace("{PAIRS}", Currency.currencyPairsAsString.mkString(","))
+  implicit lazy val executor = executors.default
+  implicit lazy val system = actorSystems.system
+  implicit lazy val materializer = actorSystems.materializer
+  val apiKey = config.client.apiKey
+  val url = buildUrl(config.client.url, apiKey)
   val request = HttpRequest(HttpMethods.GET, url)
 
   override def fetchRates: Task[ClientError Either Seq[Rate]] =
@@ -46,32 +40,27 @@ case class AkkaHttpClient(
       requestQuotes
     }
 
-  private def requestQuotes: Future[ClientError Either Seq[Rate]] =
+  private def requestQuotes: Future[ClientError Either Rates] =
     Http()
       .singleRequest(request)
       .flatMap {
-        case r @ HttpResponse(status, _, entity, _) if status.intValue == 200 ⇒
-          Unmarshal(entity)
-            .to[OneForgeApiError Either List[OneForgeQuote]]
-            .map {
-              case Left(e) ⇒
-                ErrorResponse(e.message).asLeft[Seq[Rate]]
-              case Right(quotes) ⇒
-                quotes.map(toRate).asRight[ClientError]
-            }
-        case HttpResponse(_, _, entity, _) ⇒
-          logger.info("error")
-          Unmarshal(entity).to[String].map(errorReason ⇒ Left(ErrorResponse(errorReason)))
-        case x ⇒
-          logger.info("error 2")
-          Future.successful(Left(ErrorResponse("error")))
+        case HttpResponse(StatusCodes.OK, _, entity, _) ⇒
+          handleOkResponse(entity)
+        case HttpResponse(StatusCodes.NotFound, _, entity, _) ⇒
+          handleNotFound(entity)
+        case response @ HttpResponse(status, _, _, _) if status.intValue >= 400 && status.intValue < 500 ⇒
+          handle4xxResponse(response)
+        case response @ HttpResponse(status, _, _, _) if status.intValue >= 500 ⇒
+          handle5xxResponse(response)
+        case response ⇒
+          handleOtherResponse(response)
+      }
+      .recover {
+        case t ⇒ UnknownError(t.getMessage, t).asLeft[Rates]
       }
 
-  private def toRate(quote: OneForgeQuote): Rate =
-    Rate(toPair(quote.symbol), quote.price, quote.timestamp)
-
-  private def toPair(symbol: String): Pair = Pair(
-    fromString(symbol.take(3)),
-    fromString(symbol.takeRight(3))
-  )
+  def buildUrl(baseUrl: String, apiKey: String): String =
+    baseUrl
+      .replace("{API_KEY}", apiKey)
+      .replace("{PAIRS}", Currency.currencyPairsAsString.mkString(","))
 }

@@ -1,6 +1,21 @@
 package forex.services.oneforge
 
-sealed trait ClientError {
+import scala.util.control.NoStackTrace
+
+sealed trait ClientError extends Throwable with NoStackTrace {
   def reason: String
+  def status: Int
 }
-case class ErrorResponse(reason: String) extends ClientError
+
+object ClientError {
+  case class RequestError(reason: String, status: Int) extends ClientError
+  case class ServerError(reason: String, status: Int) extends ClientError
+  case class UnexpectedResponse(reason: String, status: Int) extends ClientError
+  case class UnmarshallingError(reason: String, status: Int, underlying: Throwable) extends ClientError
+  case class NotFound(reason: String) extends ClientError {
+    val status = 404
+  }
+  case class UnknownError(reason: String, underlying: Throwable) extends ClientError {
+    val status = -1
+  }
+}
