@@ -21,8 +21,6 @@ trait Processes[F[_]] {
       M: Monad[F],
       OneForge: OneForge[F]
   ): F[Error Either Rate] =
-    (for {
-      result ← EitherT(OneForge.get(Rate.Pair(request.from, request.to))).leftMap(toProcessError)
-    } yield result).value
+    (EitherT.apply(OneForge.get(Rate.Pair(request.from, request.to))).leftMap(converters.toProcessError)(M).map((result: Rate) => result)(M)).value
 
 }

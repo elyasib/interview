@@ -3,7 +3,6 @@ package forex.config
 import org.zalando.grafter.macros._
 
 import scala.concurrent.duration.FiniteDuration
-import org.zalando.grafter.syntax.rewriter._
 
 @readers
 case class ApplicationConfig(
@@ -28,9 +27,6 @@ case class ExecutorsConfig(
 )
 
 case class RatesServiceConfig(
-    serviceType: String,
-    //client: Option[ClientConfig],
-    //cacheConfig: Option[CacheConfig]
     client: ClientConfig,
     cache: CacheConfig
 )

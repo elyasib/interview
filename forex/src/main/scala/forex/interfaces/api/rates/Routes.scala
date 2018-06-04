@@ -16,7 +16,8 @@ case class Routes(
   import Converters._
   import ApiMarshallers._
 
-  import processes._
+  import processes.Rates
+  import processes._oneForge
   import runners._
 
   lazy val route: server.Route =

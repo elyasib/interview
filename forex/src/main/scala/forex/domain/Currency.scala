@@ -3,6 +3,7 @@ package forex.domain
 import cats.Show
 import io.circe._
 import cats.implicits._
+import forex.domain.Rate.Pair
 
 sealed trait Currency
 object Currency {
@@ -28,17 +29,17 @@ object Currency {
     case USD ⇒ "USD"
   }
 
-  implicit val pairShow: Show[Rate.Pair] = Show.show(pair ⇒ pair.from.show + pair.to.show)
+  implicit val pairShow: Show[Pair] = Show.show(pair ⇒ pair.from.show + pair.to.show)
 
-  val currencies = Seq(AUD, CAD, CHF, EUR, GBP, NZD, JPY, SGD, USD)
+  val currencies = Set(AUD, CAD, CHF, EUR, GBP, NZD, JPY, SGD, USD)
 
-  val currencyPairs: Seq[Rate.Pair] = for {
+  val currencyPairs: Set[Pair] = for {
     currency1 ← currencies
     currency2 ← currencies
     if currency1 != currency2
-  } yield Rate.Pair(currency1, currency2)
+  } yield Pair(currency1, currency2)
 
-  val currencyPairsAsString: Seq[String] = currencyPairs.map(_.show)
+  val currencyPairsAsString: Set[String] = currencyPairs.map(_.show)
 
   def fromString(s: String): Currency = s match {
     case "AUD" | "aud" ⇒ AUD
