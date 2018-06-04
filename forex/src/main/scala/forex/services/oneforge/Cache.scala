@@ -24,6 +24,8 @@ case class SimpleCache(
   import cats.implicits._
 
   val maxAge = ratesServiceConfig.cache.maxAge
+
+  // This could be replaced by a ConcurrentHashMap or a guava Cache
   val cache: Map[Pair, Rate] = TrieMap()
 
   override def get(pair: Pair): Task[CacheError Either Rate] = Task.now(getFromCache(pair))

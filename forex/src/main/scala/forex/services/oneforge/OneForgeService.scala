@@ -45,6 +45,7 @@ case class OneForgeServiceLive(
   // The cache refresher task should be created/scheduled in Start#start to avoid task duplications
   override def start: Eval[StartResult] =
     StartResult.eval("Starting the 1Forge live service") {
+      println("starting client")
       scheduler.schedule(FiniteDuration(0, TimeUnit.SECONDS), timeToRefreshCache) { refreshCacheTask.runAsync }
     }
 

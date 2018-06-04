@@ -18,6 +18,8 @@ resolvers +=
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 libraryDependencies ++= Seq(
+  "org.scalatest"                  % "scalatest_2.12"        % "3.0.5" % Test,
+  "com.typesafe.akka"              %% "akka-http-testkit"    % "10.0.10" % Test,
   "com.github.pureconfig"          %% "pureconfig"           % "0.7.2",
   "com.softwaremill.quicklens"     %% "quicklens"            % "1.4.11",
   "com.typesafe.akka"              %% "akka-actor"           % "2.4.19",
