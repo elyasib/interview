@@ -10,19 +10,20 @@ import org.atnos.eff.addon.monix.task._
 
 object Interpreters {
   def dummy[R](
+      cacheService: Cache
+  )(
       implicit
       m1: _task[R]
-  ): Algebra[Eff[R, ?]] = new Dummy[R]
+  ): Algebra[Eff[R, ?]] = new Dummy[R](cacheService)
 }
 
-final class Dummy[R] private[oneforge] (
-    implicit
-    m1: _task[R]
+private[oneforge] final class Dummy[R](
+    val cacheService: Cache
+)(
+    implicit val m1: _task[R]
 ) extends Algebra[Eff[R, ?]] {
-  override def get(
-      pair: Rate.Pair
-  ): Eff[R, Error Either Rate] =
+  override def get(pair: Rate.Pair): Eff[R, Error Either Rate] =
     for {
-      result ← fromTask(Task.now(Rate(pair, Price(BigDecimal(100)), Timestamp.now)))
+      result ← fromTask(Task.now(cacheService.get(pair)))
     } yield Right(result)
 }

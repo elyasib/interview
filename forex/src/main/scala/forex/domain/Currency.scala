@@ -2,6 +2,7 @@ package forex.domain
 
 import cats.Show
 import io.circe._
+import cats.implicits._
 
 sealed trait Currency
 object Currency {
@@ -27,6 +28,18 @@ object Currency {
     case USD ⇒ "USD"
   }
 
+  implicit val pairShow: Show[Rate.Pair] = Show.show(pair ⇒ pair.from.show + pair.to.show)
+
+  val currencies = Seq(AUD, CAD, CHF, EUR, GBP, NZD, JPY, SGD, USD)
+
+  val currencyPairs: Seq[Rate.Pair] = for {
+    currency1 ← currencies
+    currency2 ← currencies
+    if currency1 != currency2
+  } yield Rate.Pair(currency1, currency2)
+
+  val currencyPairsAsString: Seq[String] = currencyPairs.map(_.show)
+
   def fromString(s: String): Currency = s match {
     case "AUD" | "aud" ⇒ AUD
     case "CAD" | "cad" ⇒ CAD
@@ -41,5 +54,4 @@ object Currency {
 
   implicit val encoder: Encoder[Currency] =
     Encoder.instance[Currency] { show.show _ andThen Json.fromString }
-
 }
