@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 object RetriableTask extends LazyLogging {
   val fallbackFn: Throwable PartialFunction Boolean = { case _ ⇒ false }
 
-  def ofFuture[X](
+  def retriableOf[X](
       maxRetries: Int,
       timeoutPerRetry: FiniteDuration,
       backoffTime: FiniteDuration,
@@ -17,7 +17,7 @@ object RetriableTask extends LazyLogging {
   )(
       computation: Task[X]
   ): Task[X] =
-    retriableTaskFromFuture(
+    retry(
       maxRetries,
       maxRetries,
       timeoutPerRetry,
@@ -26,7 +26,7 @@ object RetriableTask extends LazyLogging {
     )(computation)
       .timeout(totalTimeout)
 
-  def retriableTaskFromFuture[X](
+  def retry[X](
       maxRetries: Int,
       retriesLeft: Int,
       timeout: FiniteDuration,
@@ -36,9 +36,9 @@ object RetriableTask extends LazyLogging {
       computation: Task[X]
   ): Task[X] =
     computation.onErrorRecoverWith {
-      case e if shouldTriggerRetry(e) && retriesLeft > 0 ⇒
-        logger.info("Retrying triggered by={}, retriesLeft={}/{}", e, retriesLeft, maxRetries)
-        retriableTaskFromFuture(maxRetries, retriesLeft - 1, timeout, backoffTime, shouldTriggerRetry)(computation)
+      case error if shouldTriggerRetry(error) && retriesLeft > 0 ⇒
+        logger.info("Retrying triggered by={}, retriesLeft={}/{}", error, retriesLeft, maxRetries)
+        retry(maxRetries, retriesLeft - 1, timeout, backoffTime, shouldTriggerRetry)(computation)
           .delayExecution(backoffTime)
     }
 }

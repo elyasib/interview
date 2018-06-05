@@ -2,7 +2,7 @@ package forex.services.oneforge
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import forex.config.{ ApplicationConfig, RatesServiceConfig }
+import forex.config.{ ApplicationConfig, ClientConfig, RatesServiceConfig }
 import forex.domain.{ Currency, Rate }
 import com.typesafe.scalalogging.LazyLogging
 import forex.main.{ ActorSystems, Executors }
@@ -11,8 +11,10 @@ import org.zalando.grafter.macros.{ defaultReader, readerOf }
 import cats.implicits._
 import forex.concurrent.RetriableTask
 import forex.services.oneforge.ClientError.{ NotFound, ServerError, UnknownError }
+import forex.services.oneforge.client.OneForgeResponseHandler._
 
 import scala.concurrent.TimeoutException
+import scala.concurrent.duration._
 
 @defaultReader[AkkaHttpClient]
 trait Client {
@@ -21,19 +23,16 @@ trait Client {
 
 @readerOf[ApplicationConfig]
 case class AkkaHttpClient(
-    config: RatesServiceConfig,
+    config: ClientConfig,
     actorSystems: ActorSystems,
     executors: Executors
 ) extends Client
     with LazyLogging {
-  import forex.services.oneforge.client.OneForgeResponseHandler._
-  import scala.concurrent.duration._
 
   implicit lazy val executor = executors.default
   implicit lazy val system = actorSystems.system
   implicit lazy val materializer = actorSystems.materializer
-  val apiKey = config.client.apiKey
-  val url = buildUrl(config.client.url, apiKey)
+  val url = buildUrl(config.url, config.apiKey)
   val request = HttpRequest(HttpMethods.GET, url)
 
   val shouldRetry: Throwable PartialFunction Boolean = {
@@ -42,12 +41,12 @@ case class AkkaHttpClient(
   }
 
   override def fetchRates: Task[ClientError Either Seq[Rate]] =
-    RetriableTask.ofFuture(
-      5,
-      5.seconds,
-      2.seconds,
-      3.minutes + 30.seconds,
-      shouldRetry
+    RetriableTask.retriableOf(
+      maxRetries = config.maxRetries,
+      timeoutPerRetry = config.timeoutPerRetry,
+      backoffTime = config.backoffTime,
+      totalTimeout = config.totalTimeout,
+      shouldTriggerRetry = shouldRetry
     ) {
       requestQuotes
     }

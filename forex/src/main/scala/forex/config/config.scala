@@ -9,7 +9,9 @@ case class ApplicationConfig(
     akka: AkkaConfig,
     api: ApiConfig,
     executors: ExecutorsConfig,
-    ratesService: RatesServiceConfig
+    ratesService: RatesServiceConfig,
+    cache: CacheConfig,
+    client: ClientConfig
 )
 
 case class AkkaConfig(
@@ -27,16 +29,18 @@ case class ExecutorsConfig(
 )
 
 case class RatesServiceConfig(
-    client: ClientConfig,
-    cache: CacheConfig
+    timeToRefreshCache: FiniteDuration
 )
 
 case class ClientConfig(
     url: String,
-    apiKey: String
+    apiKey: String,
+    maxRetries: Int,
+    timeoutPerRetry: FiniteDuration,
+    totalTimeout: FiniteDuration,
+    backoffTime: FiniteDuration
 )
 
 case class CacheConfig(
-    maxAge: FiniteDuration,
-    timeToRefresh: FiniteDuration
+    maxAge: FiniteDuration
 )

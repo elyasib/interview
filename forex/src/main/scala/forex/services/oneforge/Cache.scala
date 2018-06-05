@@ -1,14 +1,14 @@
 package forex.services.oneforge
 
-import forex.config.{ApplicationConfig, RatesServiceConfig}
-import forex.domain.{Currency, Rate, Timestamp}
+import forex.config.{ ApplicationConfig, CacheConfig, RatesServiceConfig }
+import forex.domain.{ Currency, Rate, Timestamp }
 import Rate.Pair
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
-import org.zalando.grafter.macros.{defaultReader, readerOf}
+import org.zalando.grafter.macros.{ defaultReader, readerOf }
 import CacheError._
 
-import scala.collection.concurrent.{Map, TrieMap}
+import scala.collection.concurrent.{ Map, TrieMap ⇒ ConcurrentMap }
 
 @defaultReader[SimpleCache]
 trait Cache {
@@ -18,21 +18,22 @@ trait Cache {
 
 @readerOf[ApplicationConfig]
 case class SimpleCache(
-    ratesServiceConfig: RatesServiceConfig
+    config: CacheConfig
 ) extends Cache
     with LazyLogging {
   import cats.implicits._
 
-  val maxAge = ratesServiceConfig.cache.maxAge
-
   // This could be replaced by a ConcurrentHashMap or a guava Cache
-  val cache: Map[Pair, Rate] = TrieMap()
+  val cache: Map[Pair, Rate] = ConcurrentMap()
+  val maxAge = config.maxAge
 
-  override def get(pair: Pair): Task[CacheError Either Rate] = Task.now(getFromCache(pair))
-    .onErrorRecover {
-      case t: Throwable =>
-        CacheException(t).asLeft[Rate]
-    }
+  override def get(pair: Pair): Task[CacheError Either Rate] =
+    Task
+      .now(getFromCache(pair))
+      .onErrorRecover {
+        case t: Throwable ⇒
+          CacheException(t).asLeft[Rate]
+      }
 
   def getFromCache(pair: Pair): CacheError Either Rate = cache.get(pair) match {
     case Some(rate) if !rate.isExpired(maxAge) ⇒
@@ -46,7 +47,8 @@ case class SimpleCache(
   }
 
   override def update(rates: Seq[Rate]): Task[CacheError Either Unit] =
-    Task.now(rates.foreach(rate ⇒ cache.update(rate.pair, rate)).asRight[CacheError])
+    Task
+      .now(rates.foreach(rate ⇒ cache.update(rate.pair, rate)).asRight[CacheError])
       .onErrorRecover {
         case t: Throwable ⇒ CacheException(t).asLeft
       }
