@@ -35,21 +35,23 @@ case class OneForgeServiceLive(
 ) extends OneForgeService
     with Start
     with LazyLogging {
-  import monix.execution.Scheduler.Implicits.global
+  import monix.execution.Scheduler
+  import monix.execution.ExecutionModel
 
   implicit lazy val executor = executors.default
+  implicit lazy val taskScheduler = Scheduler(executor, ExecutionModel.Default)
   override val service: OneForge[AppEffect] = Interpreters.live[AppStack](cache)
   val scheduler = actorSystems.system.scheduler
   val timeToRefreshCache = serviceConfig.cache.timeToRefresh
+  import scala.concurrent.duration._
 
   // The cache refresher task should be created/scheduled in Start#start to avoid task duplications
 
-  import scala.concurrent.duration._
   //val circuitBreaker = TaskCircuitBreaker(maxFailures = 5, resetTimeout = 10.seconds, exponentialBackoffFactor = 2)
 
   override def start: Eval[StartResult] =
     StartResult.eval("Starting the 1Forge live service") {
-      scheduler.schedule(FiniteDuration(0, TimeUnit.SECONDS), timeToRefreshCache) { refreshCacheTask.runAsync }
+      scheduler.schedule(0.seconds, timeToRefreshCache) { refreshCacheTask.runAsync }
     }
 
   val refreshCacheTask = client.fetchRates.flatMap {

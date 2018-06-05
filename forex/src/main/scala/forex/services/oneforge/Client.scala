@@ -2,16 +2,17 @@ package forex.services.oneforge
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import forex.config.{ApplicationConfig, RatesServiceConfig}
-import forex.domain.{Currency, Rate}
+import forex.config.{ ApplicationConfig, RatesServiceConfig }
+import forex.domain.{ Currency, Rate }
 import com.typesafe.scalalogging.LazyLogging
-import forex.main.{ActorSystems, Executors}
+import forex.main.{ ActorSystems, Executors }
 import monix.eval.Task
-import org.zalando.grafter.macros.{defaultReader, readerOf}
+import org.zalando.grafter.macros.{ defaultReader, readerOf }
 import cats.implicits._
-import forex.services.oneforge.ClientError.UnknownError
+import forex.concurrent.RetriableTask
+import forex.services.oneforge.ClientError.{ NotFound, ServerError, UnknownError }
 
-import scala.concurrent.Future
+import scala.concurrent.TimeoutException
 
 @defaultReader[AkkaHttpClient]
 trait Client {
@@ -26,6 +27,7 @@ case class AkkaHttpClient(
 ) extends Client
     with LazyLogging {
   import forex.services.oneforge.client.OneForgeResponseHandler._
+  import scala.concurrent.duration._
 
   implicit lazy val executor = executors.default
   implicit lazy val system = actorSystems.system
@@ -34,13 +36,25 @@ case class AkkaHttpClient(
   val url = buildUrl(config.client.url, apiKey)
   val request = HttpRequest(HttpMethods.GET, url)
 
+  val shouldRetry: Throwable PartialFunction Boolean = {
+    case e @ (_: TimeoutException | _: ServerError) ⇒
+      true
+  }
+
   override def fetchRates: Task[ClientError Either Seq[Rate]] =
-    Task.deferFuture {
-      logger.info("Trying to fetch rates from 1forge")
+    RetriableTask.ofFuture(
+      5,
+      5.seconds,
+      2.seconds,
+      3.minutes + 30.seconds,
+      shouldRetry
+    ) {
       requestQuotes
     }
 
-  private def requestQuotes: Future[ClientError Either Rates] =
+  private def requestQuotes: Task[ClientError Either Rates] = Task.deferFuture {
+    logger.info("Trying to fetch rates from 1forge")
+
     Http()
       .singleRequest(request)
       .flatMap {
@@ -58,6 +72,12 @@ case class AkkaHttpClient(
       .recover {
         case t ⇒ UnknownError(t.getMessage, t).asLeft[Rates]
       }
+      .map {
+        case Left(e: ServerError) ⇒ throw e
+        case Left(e: NotFound)    ⇒ throw e
+        case other                ⇒ other
+      }
+  }
 
   def buildUrl(baseUrl: String, apiKey: String): String =
     baseUrl
