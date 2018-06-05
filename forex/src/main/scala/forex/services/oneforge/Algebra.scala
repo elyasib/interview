@@ -4,5 +4,5 @@ import forex.domain._
 
 trait Algebra[F[_]] {
   def get(pair: Rate.Pair): F[OneForgeError Either Rate]
-  //def updateCache(rate: Rate): F[Error Either Unit]
+  def updateCache(): F[OneForgeError  Either Unit]
 }

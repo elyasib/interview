@@ -33,7 +33,7 @@ class ApplicationSpec extends WordSpec with Matchers with BeforeAndAfter with Sc
   }
 
   val cacheWithExpiredData = new SimpleCache(
-    RatesServiceConfig(ClientConfig("https://blah.com", "key"), CacheConfig(5.minutes, 3.minutes))
+    CacheConfig(5.minutes)
   ) {
     val oldRate = Rate(Rate.Pair(Currency.AUD, Currency.JPY), Price(BigDecimal(0)), Timestamp(OffsetDateTime.now.minusDays(1)))
     override val cache: concurrent.Map[Rate.Pair, Rate] = TrieMap(oldRate.pair -> oldRate)

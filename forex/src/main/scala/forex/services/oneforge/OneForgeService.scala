@@ -3,7 +3,7 @@ package forex.services.oneforge
 import cats.Eval
 import com.typesafe.scalalogging.LazyLogging
 import forex.config._
-import forex.main.{ActorSystems, AppEffect, AppStack, Executors}
+import forex.main._
 import forex.services.OneForge
 import monix.eval.Task
 import org.zalando.grafter.{Start, StartResult}
@@ -16,9 +16,10 @@ trait OneForgeService {
 
 @readerOf[ApplicationConfig]
 case class OneForgeServiceDummy(
-    cache: Cache
+    cache: Cache,
+    client: Client,
 ) extends OneForgeService {
-  override val service: OneForge[AppEffect] = Interpreters.dummy[AppStack](cache)
+  override val service: OneForge[AppEffect] = Interpreters.dummy[AppStack](cache, client)
 }
 
 @readerOf[ApplicationConfig]
@@ -27,7 +28,8 @@ case class OneForgeServiceLive(
     cache: Cache,
     actorSystems: ActorSystems,
     executors: Executors,
-    serviceConfig: RatesServiceConfig
+    serviceConfig: RatesServiceConfig,
+    runners: Runners
 ) extends OneForgeService
     with Start
     with LazyLogging {
@@ -36,7 +38,7 @@ case class OneForgeServiceLive(
 
   implicit lazy val executor = executors.default
   implicit lazy val taskScheduler = Scheduler(executor, ExecutionModel.Default)
-  override val service: OneForge[AppEffect] = Interpreters.live[AppStack](cache)
+  override val service: OneForge[AppEffect] = Interpreters.live[AppStack](cache, client)
   val scheduler = actorSystems.system.scheduler
   val timeToRefreshCache = serviceConfig.timeToRefreshCache
   import scala.concurrent.duration._
@@ -47,11 +49,11 @@ case class OneForgeServiceLive(
       scheduler.schedule(0.seconds, timeToRefreshCache) { refreshCacheTask.runAsync }
     }
 
-  val refreshCacheTask = client.fetchRates.flatMap {
-      case Left(e) ⇒
-        logger.error("Failed to refresh the cache. reason={}", e.reason)
-        Task.raiseError(e)
-      case Right(rates) ⇒
-        cache.update(rates)
+  val refreshCacheTask: Task[Unit] =
+    runners.runApp(service.updateCache()).map {
+      case Left(e) =>
+        logger.error("Failed to refresh the cache. reason={}", e)
+      case _ =>
+        logger.info("Cache refreshed successfully")
     }
 }

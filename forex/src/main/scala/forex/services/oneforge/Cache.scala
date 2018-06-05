@@ -38,7 +38,7 @@ case class SimpleCache(
   def getFromCache(pair: Pair): CacheError Either Rate = cache.get(pair) match {
     case Some(rate) if !rate.isExpired(maxAge) ⇒
       Right(rate)
-    case Some(rate) ⇒
+    case Some(_) ⇒
       Left(ExpiredRate(pair))
     case None if Currency.currencyPairs.contains(pair) ⇒
       Left(ExpiredRate(pair))
