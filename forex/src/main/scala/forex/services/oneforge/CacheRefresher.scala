@@ -11,28 +11,26 @@ import monix.eval.Task
 import org.zalando.grafter.{Start, StartResult}
 import org.zalando.grafter.macros.{defaultReader, readerOf}
 
-@defaultReader[OneForgeServiceLive]
-trait OneForgeService {
+@defaultReader[CacheRefresherLive]
+trait CacheRefresher {
   def service: OneForge[AppEffect]
 }
 
 @readerOf[ApplicationConfig]
-case class OneForgeServiceDummy(
-    cache: Cache,
-    client: Client,
-) extends OneForgeService {
-  override val service: OneForge[AppEffect] = Interpreters.dummy[AppStack](cache, client)
+case class CacheRefresherDummy(
+    interpreter: Interpreter
+) extends CacheRefresher {
+  override val service: OneForge[AppEffect] = interpreter.implementation[AppStack]
 }
 
 @readerOf[ApplicationConfig]
-case class OneForgeServiceLive(
-    client: Client,
-    cache: Cache,
+case class CacheRefresherLive(
+    interpreter: Interpreter,
     actorSystems: ActorSystems,
     executors: Executors,
     serviceConfig: RatesServiceConfig,
     runners: Runners
-) extends OneForgeService
+) extends CacheRefresher
     with Start
     with LazyLogging {
   import monix.execution.Scheduler
@@ -40,7 +38,7 @@ case class OneForgeServiceLive(
 
   implicit lazy val executor = executors.default
   implicit lazy val taskScheduler = Scheduler(executor, ExecutionModel.Default)
-  override val service: OneForge[AppEffect] = Interpreters.live[AppStack](cache, client)
+  override val service: OneForge[AppEffect] = interpreter.implementation[AppStack]
   val scheduler = actorSystems.system.scheduler
   val timeToRefreshCache = serviceConfig.timeToRefreshCache
   import scala.concurrent.duration._

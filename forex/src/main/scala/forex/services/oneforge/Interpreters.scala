@@ -11,22 +11,25 @@ import forex.client.Client
 import forex.domain._
 import forex.services.oneforge.OneForgeError.toOneForgeError
 import forex.cache.Cache
+import forex.config.ApplicationConfig
+import org.zalando.grafter.macros.{ defaultReader, readerOf }
 
 import scala.util.Random
 
-object Interpreters {
-  def dummy[R](
-      cache: Cache,
-      client: Client
-  )(
+@defaultReader[LiveInter]
+trait Interpreter {
+  def implementation[R](
       implicit
       m1: _task[R]
-  ): Algebra[Eff[R, ?]] = new Dummy[R](cache, client)
+  ): Algebra[Eff[R, ?]]
+}
 
-  def live[R](
-      cache: Cache,
-      client: Client
-  )(
+@readerOf[ApplicationConfig]
+case class LiveInter(
+    cache: Cache,
+    client: Client
+) extends Interpreter {
+  def implementation[R](
       implicit
       m1: _task[R]
   ): Algebra[Eff[R, ?]] = new LiveInterpreter[R](cache, client)
@@ -62,9 +65,6 @@ private[oneforge] final class LiveInterpreter[R](
 }
 
 private[oneforge] final class Dummy[R](
-    val cacheService: Cache,
-    val client: Client
-)(
     implicit val m1: _task[R]
 ) extends Algebra[Eff[R, ?]] {
   import cats.implicits._

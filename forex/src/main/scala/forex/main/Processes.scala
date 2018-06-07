@@ -1,17 +1,17 @@
 package forex.main
 
 import forex.config._
-import forex.services.oneforge.OneForgeService
+import forex.services.oneforge.Interpreter
 import forex.services.OneForge
 import forex.{processes => p}
 import org.zalando.grafter.macros._
 
 @readerOf[ApplicationConfig]
 case class Processes(
-  oneForgeService: OneForgeService
+  interpreter: Interpreter
 ) {
   implicit final lazy val _oneForge: OneForge[AppEffect] =
-    oneForgeService.service
+  interpreter.implementation[AppStack]
 
   final val Rates = p.Rates[AppEffect]
 }
