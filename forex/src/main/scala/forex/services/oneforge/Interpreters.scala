@@ -4,11 +4,13 @@ import java.math.MathContext
 
 import cats.data.EitherT
 import com.typesafe.scalalogging.LazyLogging
-import forex.domain._
 import monix.eval.Task
 import org.atnos.eff._
 import org.atnos.eff.addon.monix.task._
+import forex.client.Client
+import forex.domain._
 import forex.services.oneforge.OneForgeError.toOneForgeError
+import forex.cache.Cache
 
 import scala.util.Random
 

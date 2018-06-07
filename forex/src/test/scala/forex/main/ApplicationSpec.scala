@@ -9,8 +9,10 @@ import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import forex.config._
 import org.zalando.grafter.syntax.rewriter._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import forex.cache.CacheError
 import forex.domain.{Currency, Price, Rate, Timestamp}
-import forex.services.oneforge.{Cache, CacheError, SimpleCache}
+import forex.cache.cache.{Cache, SimpleCache}
+import forex.services.oneforge.{CacheError, SimpleCache}
 import monix.eval.Task
 
 import scala.collection.concurrent
@@ -59,7 +61,7 @@ class ApplicationSpec extends WordSpec with Matchers with BeforeAndAfter with Sc
 
   import forex.domain.Rate._
 
-  "The forex OneForge service" should {
+  "The forex service" should {
     "return a rate for a valid currency pair" in {
       Get("?from=USD&to=EUR") ~> appWithAllCurrencies.api.routes.route ~> check {
         response.status shouldEqual StatusCodes.OK
@@ -68,7 +70,7 @@ class ApplicationSpec extends WordSpec with Matchers with BeforeAndAfter with Sc
     }
   }
 
-  "The forex OneForge service" should {
+  "The forex service" should {
     "return return a BadRequest for an invalid currency pair" in {
       Get("?from=USD&to=MXN") ~> appWithAllCurrencies.api.routes.route ~> check {
         response.status shouldEqual StatusCodes.BadRequest
@@ -77,7 +79,7 @@ class ApplicationSpec extends WordSpec with Matchers with BeforeAndAfter with Sc
   }
 
 
-  "The forex OneForge service" should {
+  "The forex service" should {
     "return return 404 when a valid currency pair has not been updated in the cache" in {
       Get("?from=AUD&to=JPY") ~> appWithExpiredData.api.routes.route ~> check {
         response.status shouldEqual StatusCodes.NotFound

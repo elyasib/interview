@@ -1,18 +1,17 @@
-package forex.services.oneforge.client
+package forex.client
 
-import akka.http.scaladsl.model.{ HttpEntity, HttpResponse }
+import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.Materializer
-import forex.domain.oneforge.{ OneForgeApiErrorResponse, OneForgeApiQuote }
+import forex.domain.oneforge.{OneForgeApiErrorResponse, OneForgeApiQuote}
 import forex.domain.oneforge.OneForgeApiResponse._
-import forex.domain.{ Currency, Rate }
+import forex.domain.{Currency, Rate}
 import Rate.Pair
 import Currency.fromString
-import forex.services.oneforge.ClientError
 import ClientError._
 import cats.implicits._
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 object OneForgeResponseHandler {
   type Rates = Seq[Rate]

@@ -1,14 +1,14 @@
-package forex.services.oneforge
+package forex.cache
 
-import forex.config.{ ApplicationConfig, CacheConfig, RatesServiceConfig }
-import forex.domain.{ Currency, Rate, Timestamp }
-import Rate.Pair
 import com.typesafe.scalalogging.LazyLogging
+import forex.config.{ApplicationConfig, CacheConfig}
+import forex.domain.Rate.Pair
+import forex.domain.{Currency, Rate}
+import forex.cache.CacheError._
 import monix.eval.Task
-import org.zalando.grafter.macros.{ defaultReader, readerOf }
-import CacheError._
+import org.zalando.grafter.macros.{defaultReader, readerOf}
 
-import scala.collection.concurrent.{ Map, TrieMap ⇒ ConcurrentMap }
+import scala.collection.concurrent.{Map, TrieMap => ConcurrentMap}
 
 @defaultReader[SimpleCache]
 trait Cache {

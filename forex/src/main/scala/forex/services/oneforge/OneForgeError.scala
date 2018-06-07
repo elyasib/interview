@@ -1,6 +1,7 @@
 package forex.services.oneforge
 
-import forex.services.oneforge.CacheError.{CacheException, ExpiredRate, NotSupported}
+import forex.cache.CacheError.{CacheException, ExpiredRate, NotSupported}
+import forex.client.ClientError
 
 import scala.util.control.NoStackTrace
 

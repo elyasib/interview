@@ -1,4 +1,4 @@
-package forex.services.oneforge
+package forex.cache
 
 import cats.implicits._
 import forex.domain.Currency

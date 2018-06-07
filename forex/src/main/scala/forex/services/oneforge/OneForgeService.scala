@@ -5,6 +5,8 @@ import com.typesafe.scalalogging.LazyLogging
 import forex.config._
 import forex.main._
 import forex.services.OneForge
+import forex.cache.Cache
+import forex.client.Client
 import monix.eval.Task
 import org.zalando.grafter.{Start, StartResult}
 import org.zalando.grafter.macros.{defaultReader, readerOf}
@@ -46,11 +48,14 @@ case class OneForgeServiceLive(
   // The cache refresher task should be created/scheduled in Start#start to avoid task duplications
   override def start: Eval[StartResult] =
     StartResult.eval("Starting the 1Forge live service") {
-      scheduler.schedule(0.seconds, timeToRefreshCache) { refreshCacheTask.runAsync }
+      scheduler.schedule(0.seconds, timeToRefreshCache) { refreshCacheTaskWithLogging.runAsync }
     }
 
-  val refreshCacheTask: Task[Unit] =
-    runners.runApp(service.updateCache()).map {
+  val refreshCacheTask: Task[Either[OneForgeError, Unit]] =
+    runners.runApp(service.updateCache())
+
+  val refreshCacheTaskWithLogging: Task[Unit] =
+    refreshCacheTask.map {
       case Left(e) =>
         logger.error("Failed to refresh the cache. reason={}", e)
       case _ =>

@@ -1,20 +1,19 @@
-package forex.services.oneforge
+package forex.client
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import forex.config.{ ApplicationConfig, ClientConfig, RatesServiceConfig }
-import forex.domain.{ Currency, Rate }
-import com.typesafe.scalalogging.LazyLogging
-import forex.main.{ ActorSystems, Executors }
-import monix.eval.Task
-import org.zalando.grafter.macros.{ defaultReader, readerOf }
 import cats.implicits._
+import com.typesafe.scalalogging.LazyLogging
+import forex.client.ClientError._
 import forex.concurrent.RetriableTask
-import forex.services.oneforge.ClientError.{ NotFound, ServerError, UnknownError }
-import forex.services.oneforge.client.OneForgeResponseHandler._
+import forex.config.{ApplicationConfig, ClientConfig}
+import forex.domain.{Currency, Rate}
+import forex.main.{ActorSystems, Executors}
+import forex.client.OneForgeResponseHandler._
+import monix.eval.Task
+import org.zalando.grafter.macros.{defaultReader, readerOf}
 
 import scala.concurrent.TimeoutException
-import scala.concurrent.duration._
 
 @defaultReader[AkkaHttpClient]
 trait Client {

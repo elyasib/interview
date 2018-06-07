@@ -1,6 +1,5 @@
 package forex.main
 
-import akka.stream.Client
 import forex.config._
 import forex.services.oneforge.OneForgeServiceLive
 import org.zalando.grafter.macros._
@@ -10,8 +9,8 @@ import org.zalando.grafter.syntax.rewriter._
 case class Application(
     api: Api
 ) {
-  //def configure(): Application = this.singletons
   def configure(): Application = this.modifyWith[Any] {
+    // Use a separate executor service for the async cache refresh task
     case c: OneForgeServiceLive ⇒
       c.replace[ExecutorsConfig](ExecutorsConfig("executors.scheduler"))
   }.singletonsBy(singletonByConfig)

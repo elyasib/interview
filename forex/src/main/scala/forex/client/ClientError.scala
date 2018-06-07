@@ -1,4 +1,4 @@
-package forex.services.oneforge
+package forex.client
 
 import scala.util.control.NoStackTrace
 

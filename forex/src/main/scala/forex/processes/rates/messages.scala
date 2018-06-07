@@ -2,7 +2,6 @@ package forex.processes.rates
 
 import forex.domain._
 import scala.util.control.NoStackTrace
-import forex.services.oneforge.OneForgeError
 
 package messages {
 
