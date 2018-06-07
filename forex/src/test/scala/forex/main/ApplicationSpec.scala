@@ -11,8 +11,7 @@ import org.zalando.grafter.syntax.rewriter._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import forex.cache.CacheError
 import forex.domain.{Currency, Price, Rate, Timestamp}
-import forex.cache.cache.{Cache, SimpleCache}
-import forex.services.oneforge.{CacheError, SimpleCache}
+import forex.cache.{Cache, SimpleCache}
 import monix.eval.Task
 
 import scala.collection.concurrent

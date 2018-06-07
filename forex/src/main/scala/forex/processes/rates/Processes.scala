@@ -4,6 +4,7 @@ import cats.Monad
 import cats.data.EitherT
 import forex.domain._
 import forex.services._
+import Rate.Pair
 
 object Processes {
   def apply[F[_]]: Processes[F] =
@@ -21,6 +22,6 @@ trait Processes[F[_]] {
       M: Monad[F],
       OneForge: OneForge[F]
   ): F[Error Either Rate] =
-    (EitherT.apply(OneForge.get(Rate.Pair(request.from, request.to))).leftMap(converters.toProcessError)(M).map((result: Rate) => result)(M)).value
+    EitherT(OneForge.get(Pair(request.from, request.to))).leftMap(converters.toProcessError).value
 
 }

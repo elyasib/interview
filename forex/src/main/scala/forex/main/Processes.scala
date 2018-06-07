@@ -2,7 +2,7 @@ package forex.main
 
 import forex.config._
 import forex.services.oneforge.OneForgeService
-import forex.{services => s}
+import forex.services.OneForge
 import forex.{processes => p}
 import org.zalando.grafter.macros._
 
@@ -10,7 +10,7 @@ import org.zalando.grafter.macros._
 case class Processes(
   oneForgeService: OneForgeService
 ) {
-  implicit final lazy val _oneForge: s.OneForge[AppEffect] =
+  implicit final lazy val _oneForge: OneForge[AppEffect] =
     oneForgeService.service
 
   final val Rates = p.Rates[AppEffect]

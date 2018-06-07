@@ -19,18 +19,18 @@ If for any reason the number of allowed currency pairs per 1forge request is lim
 
 ## Solution
 I decided to implement the *Periodical & asynchronous bulk cache refresh* strategy. The key components in this solution are:
-* [OneForgeLiveService](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/services/oneforge/OneForgeService.scala#L29) - In charge of scheduling the cache refreshes. It contains a Cache and a Client.
-* [Cache](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/services/oneforge/Cache.scala) Provides an interface to interact with a thread-safe in-memory key-value store.
-* [Client](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/services/oneforge/Client.scala) Exposes an interface to fetch rates from 1forge.
-* [Intepreters](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/services/oneforge/Interpreters.scala) Know how to get the rates.
+* [`OneForgeLiveService`](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/services/oneforge/OneForgeService.scala#L29) - In charge of scheduling the cache refreshes. Uses the live interpreter to do it, which in turn uses `Client` to retrieve fresh rates and then update the `Cache`.
+* [`Cache`](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/services/oneforge/Cache.scala) Provides an interface to interact with a thread-safe in-memory key-value store.
+* [`Client`](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/services/oneforge/Client.scala) Exposes an interface to fetch rates from 1forge. [AkkaHttpClient](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/client/Client.scala#L24), is fairly resilient to errors thanks to `RetriableTask`.
+* [`RetriableTask`](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/concurrent/RetriableTask.scala) Transforms regular `monix.eval.Task`s into tasks that retry themselves a finite number of times for limited period of time with a backoff time between retries. The task is retried only if the error that made the task fail is considered transient (you have to provide a predicate  `PartialFunction[Throwable => Boolean]` which decides if the task is worth retying).
+* [`Intepreters`](https://github.com/elyasib/interview/blob/attempt/forex/src/main/scala/forex/services/oneforge/Interpreters.scala) Know how to get the rates and refresh the cache.
 
 ## TODOs
- - *Add retries with exponential back-off to the refresh job.* Wrapping the refresh task with a `TaskCircuitBreaker` is a relatively simple way of accomplishing this.
- - *Move back the cache update logic to the `Algebra` & `Intepreters`.* Right now the cache refresh logic lives in `OneForgeLiveService`, and sizeable portion of the `get` logic lives in the `Cache`. The latter makes [functional testing](https://github.com/elyasib/interview/blob/attempt/forex/src/test/scala/forex/main/ApplicationSpec.scala) very simple, but testing the cache refresh could be simpler. Leaving the core implementation details in the `Interpreter` would probably make the system more modular, and would allow more fine grained testing.
+ - *Make the retriable task's backoff time grow exponentially.*
+ - *Add a lot of unit testing.* Right now I only have functional testing in place.
 
- ## How to
- ### Run tests
- `sbt test`
- ### Run the live service
- `sbt run` or from the sbt shell `reStart`
-
+## How to
+### Run tests
+`sbt test`
+### Run the live service
+`sbt run` or from the sbt shell `reStart`
