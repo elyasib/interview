@@ -13,14 +13,14 @@ import org.zalando.grafter.macros.{defaultReader, readerOf}
 
 @defaultReader[CacheRefresherLive]
 trait CacheRefresher {
-  def service: OneForge[AppEffect]
+  def service: OneForge[RatesEffect]
 }
 
 @readerOf[ApplicationConfig]
 case class CacheRefresherDummy(
     interpreter: Interpreter
 ) extends CacheRefresher {
-  override val service: OneForge[AppEffect] = interpreter.implementation[AppStack]
+  override val service: OneForge[RatesEffect] = interpreter.implementation[RatesStack]
 }
 
 @readerOf[ApplicationConfig]
@@ -38,7 +38,7 @@ case class CacheRefresherLive(
 
   implicit lazy val executor = executors.default
   implicit lazy val taskScheduler = Scheduler(executor, ExecutionModel.Default)
-  override val service: OneForge[AppEffect] = interpreter.implementation[AppStack]
+  override val service: OneForge[RatesEffect] = interpreter.implementation[RatesStack]
   val scheduler = actorSystems.system.scheduler
   val timeToRefreshCache = serviceConfig.timeToRefreshCache
   import scala.concurrent.duration._
@@ -49,13 +49,13 @@ case class CacheRefresherLive(
       scheduler.schedule(0.seconds, timeToRefreshCache) { refreshCacheTaskWithLogging.runAsync }
     }
 
-  val refreshCacheTask: Task[Either[OneForgeError, Unit]] =
-    runners.runApp(service.updateCache())
+  val refreshCacheTask: Task[RatesError Either Unit] =
+    runners.run(service.updateCache())
 
   val refreshCacheTaskWithLogging: Task[Unit] =
     refreshCacheTask.map {
       case Left(e) =>
-        logger.error("Failed to refresh the cache. reason={}", e)
+        logger.error(s"Failed to refresh the cache. Error=${e.toString}")
       case _ =>
         logger.info("Cache refreshed successfully")
     }

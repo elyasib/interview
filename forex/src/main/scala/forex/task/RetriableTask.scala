@@ -1,4 +1,4 @@
-package forex.concurrent
+package forex.task
 
 import com.typesafe.scalalogging.LazyLogging
 import monix.eval.Task
@@ -40,5 +40,11 @@ object RetriableTask extends LazyLogging {
         logger.info("Retrying triggered by={}, retriesLeft={}/{}", error, retriesLeft, maxRetries)
         retry(maxRetries, retriesLeft - 1, timeout, backoffTime, shouldTriggerRetry)(computation)
           .delayExecution(backoffTime)
+      case error if !shouldTriggerRetry(error) ⇒
+        logger.warn("Skipping retries. Error={}", error)
+        throw error
+      case error if retriesLeft <= 0 ⇒
+        logger.warn("Retries exhausted. Error={}", error)
+        throw error
     }
 }

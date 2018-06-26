@@ -5,8 +5,8 @@ import java.util.UUID
 import akka.http.scaladsl._
 import akka.http.scaladsl.model.StatusCodes
 import com.typesafe.scalalogging.LazyLogging
-import forex.processes.rates.messages.Error
-import Error._
+import forex.processes.rates.messages.AppError
+import AppError._
 
 // TODO: json Marshalling
 object ApiExceptionHandler extends LazyLogging {

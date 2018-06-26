@@ -5,8 +5,8 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{Directives, MalformedQueryParamRejection}
 import Directives._
 import forex.domain.Currency
-import forex.processes.rates.messages.Error
-import Error._
+import forex.processes.rates.messages.AppError
+import AppError._
 
 object ApiRejectionHandler {
 

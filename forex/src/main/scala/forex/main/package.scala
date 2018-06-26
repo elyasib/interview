@@ -1,16 +1,19 @@
 package forex
 
+import forex.services.oneforge.RatesError
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.atnos.eff._
 import org.zalando.grafter._
 
-import scala.concurrent.ExecutionContext
+import forex.processes.rates.messages.AppError
 
 package object main {
 
-  type AppStack = Fx.fx1[Task]
-  type AppEffect[R] = Eff[AppStack, R]
+  type RatesErrorOrA[A] = RatesError Either A
+  type ErrorOrA[A] = AppError Either A
+  type RatesStack = Fx.fx2[Task, RatesErrorOrA]
+  type RatesEffect[R] = Eff[RatesStack, R]
+  type _eitherRatesErrorOr[R] = RatesErrorOrA |= R
 
   def toStartErrorString(results: List[StartResult]): String =
     s"Application startup failed. Modules: ${results

@@ -9,6 +9,7 @@ import scala.util.control.NoStackTrace
 
 trait CacheError extends Throwable with NoStackTrace {
   def reason: String
+  override def toString = s"${this.getClass.getSimpleName}(reason=$reason)"
 }
 
 object CacheError {

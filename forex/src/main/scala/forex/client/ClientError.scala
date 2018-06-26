@@ -5,6 +5,7 @@ import scala.util.control.NoStackTrace
 sealed trait ClientError extends Throwable with NoStackTrace {
   def reason: String
   def status: Int
+  override def toString = s"${this.getClass.getSimpleName}(reason=$reason, status=$status)"
 }
 
 object ClientError {

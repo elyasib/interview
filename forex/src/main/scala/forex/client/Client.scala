@@ -2,17 +2,17 @@ package forex.client
 
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import cats.implicits._
 import com.typesafe.scalalogging.LazyLogging
 import forex.client.ClientError._
-import forex.concurrent.RetriableTask
-import forex.config.{ApplicationConfig, ClientConfig}
-import forex.domain.{Currency, Rate}
-import forex.main.{ActorSystems, Executors}
 import forex.client.OneForgeResponseHandler._
+import forex.config.{ ApplicationConfig, ClientConfig }
+import forex.domain.{ Currency, Rate }
+import forex.main.{ ActorSystems, Executors }
+import forex.task.RetriableTask
 import monix.eval.Task
-import org.zalando.grafter.macros.{defaultReader, readerOf}
+import org.zalando.grafter.macros.{ defaultReader, readerOf }
 
+import scala.collection.immutable
 import scala.concurrent.TimeoutException
 
 @defaultReader[AkkaHttpClient]
@@ -35,8 +35,8 @@ case class AkkaHttpClient(
   val request = HttpRequest(HttpMethods.GET, url)
 
   val shouldRetry: Throwable PartialFunction Boolean = {
-    case e @ (_: TimeoutException | _: ServerError) ⇒
-      true
+    case e @ (_: TimeoutException | _: ServerError) ⇒ true
+    case _                                          ⇒ false
   }
 
   override def fetchRates: Task[ClientError Either Seq[Rate]] =
@@ -56,24 +56,15 @@ case class AkkaHttpClient(
     Http()
       .singleRequest(request)
       .flatMap {
-        case HttpResponse(StatusCodes.OK, _, entity, _) ⇒
-          handleOkResponse(entity)
-        case HttpResponse(StatusCodes.NotFound, _, entity, _) ⇒
-          handleNotFound(entity)
-        case response @ HttpResponse(status, _, _, _) if status.intValue >= 400 && status.intValue < 500 ⇒
-          handle4xxResponse(response)
-        case response @ HttpResponse(status, _, _, _) if status.intValue >= 500 ⇒
-          handle5xxResponse(response)
-        case response ⇒
-          handleOtherResponse(response)
-      }
-      .recover {
-        case t ⇒ UnknownError(t.getMessage, t).asLeft[Rates]
+        case HttpResponse(StatusCodes.OK, _, entity, _)       ⇒ handleOkResponse(entity)
+        case HttpResponse(StatusCodes.NotFound, _, entity, _) ⇒ handleNotFound(entity)
+        case response @ Is4xx(_)                              ⇒ handle4xxResponse(response)
+        case response @ Is5xx(_)                              ⇒ handle5xxResponse(response)
+        case response                                         ⇒ handleOtherResponse(response)
       }
       .map {
-        case Left(e: ServerError) ⇒ throw e
-        case Left(e: NotFound)    ⇒ throw e
-        case other                ⇒ other
+        case Left(e) if shouldRetry.apply(e) ⇒ throw e
+        case other                           ⇒ other
       }
   }
 
@@ -81,4 +72,14 @@ case class AkkaHttpClient(
     baseUrl
       .replace("{API_KEY}", apiKey)
       .replace("{PAIRS}", Currency.currencyPairsAsString.mkString(","))
+}
+
+object Is4xx {
+  def unapply(response: HttpResponse): Option[HttpResponse] =
+    if (response.status.intValue >= 400 && response.status.intValue < 500) Some(response) else None
+}
+
+object Is5xx {
+  def unapply(response: HttpResponse): Option[HttpResponse] =
+    if (response.status.intValue >= 500) Some(response) else None
 }

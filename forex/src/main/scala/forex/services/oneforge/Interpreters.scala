@@ -3,25 +3,23 @@ package forex.services.oneforge
 import java.math.MathContext
 
 import cats.data.EitherT
-import com.typesafe.scalalogging.LazyLogging
+import forex.cache.Cache
+import forex.client.Client
+import forex.config.ApplicationConfig
+import forex.domain._
+import forex.main._eitherRatesErrorOr
+import forex.services.oneforge.RatesError.toRatesError
 import monix.eval.Task
 import org.atnos.eff._
 import org.atnos.eff.addon.monix.task._
-import forex.client.Client
-import forex.domain._
-import forex.services.oneforge.OneForgeError.toOneForgeError
-import forex.cache.Cache
-import forex.config.ApplicationConfig
+import org.atnos.eff.all._
 import org.zalando.grafter.macros.{ defaultReader, readerOf }
+import monix.cats._
 
 import scala.util.Random
-
 @defaultReader[LiveInter]
 trait Interpreter {
-  def implementation[R](
-      implicit
-      m1: _task[R]
-  ): Algebra[Eff[R, ?]]
+  def implementation[R: _task: _eitherRatesErrorOr]: Algebra[Eff[R, ?]]
 }
 
 @readerOf[ApplicationConfig]
@@ -29,55 +27,46 @@ case class LiveInter(
     cache: Cache,
     client: Client
 ) extends Interpreter {
-  def implementation[R](
-      implicit
-      m1: _task[R]
-  ): Algebra[Eff[R, ?]] = new LiveInterpreter[R](cache, client)
+  def implementation[R: _task: _eitherRatesErrorOr]: Algebra[Eff[R, ?]] =
+    new LiveInterpreter[R](cache, client)
 }
 
-private[oneforge] final class LiveInterpreter[R](
+private[oneforge] final class LiveInterpreter[R: _task: _eitherRatesErrorOr](
     val cache: Cache,
     val client: Client
-)(
-    implicit val m1: _task[R]
-) extends Algebra[Eff[R, ?]]
-    with LazyLogging {
-  import cats.implicits._
-  import monix.cats._
+) extends Algebra[Eff[R, ?]] {
 
-  override def get(pair: Rate.Pair): Eff[R, OneForgeError Either Rate] = {
-    val eitherRateOrError = EitherT(cache.get(pair)).leftMap(toOneForgeError).value
+  override def get(pair: Rate.Pair): Eff[R, Rate] = {
+    val eitherRateOrErrorTask = EitherT(cache.get(pair)).leftMap(toRatesError).value
     for {
-      result ← fromTask(eitherRateOrError)
-    } yield result
+      eitherRateOrError ← fromTask(eitherRateOrErrorTask)
+      rate ← fromEither(eitherRateOrError)
+    } yield rate
   }
 
-  override def updateCache(): Eff[R, OneForgeError Either Unit] =
+  override def updateCache(): Eff[R, Unit] =
     for {
-      ratesOrError ← fromTask(EitherT(client.fetchRates).leftMap(toOneForgeError).value)
-      updateCacheTask = ratesOrError match {
-        case Right(rates) ⇒
-          EitherT(cache.update(rates)).leftMap(toOneForgeError).value
-        case Left(e) ⇒ Task.now(e.asLeft[Unit])
-      }
-      updatedOrError ← fromTask(updateCacheTask)
-    } yield updatedOrError
+      ratesOrError ← fromTask(EitherT(client.fetchRates).leftMap(toRatesError).value)
+      rates ← fromEither(ratesOrError)
+      updatedOrError ← fromTask(EitherT(cache.update(rates)).leftMap(toRatesError).value)
+      updated ← fromEither(updatedOrError)
+    } yield updated
 }
 
-private[oneforge] final class Dummy[R](
-    implicit val m1: _task[R]
-) extends Algebra[Eff[R, ?]] {
+private[oneforge] final class Dummy[R: _task: _eitherRatesErrorOr]() extends Algebra[Eff[R, ?]] {
   import cats.implicits._
 
   def randomPrice: Price = Price(BigDecimal.decimal(Random.nextDouble(), new MathContext(2)))
 
-  override def get(pair: Rate.Pair): Eff[R, OneForgeError Either Rate] =
+  override def get(pair: Rate.Pair): Eff[R, Rate] =
     for {
-      result ← fromTask(Task.now(Rate(pair, randomPrice, Timestamp.now).asRight[OneForgeError]))
-    } yield result
+      eitherErrorOrRate ← fromTask(Task.now(Rate(pair, randomPrice, Timestamp.now).asRight[RatesError]))
+      rates ← fromEither(eitherErrorOrRate)
+    } yield rates
 
-  override def updateCache(): Eff[R, Either[OneForgeError, Unit]] =
+  override def updateCache(): Eff[R, Unit] =
     for {
-      result ← fromTask(Task.now(().asRight[OneForgeError]))
-    } yield result
+      updatedOrError ← fromTask(Task.now(().asRight[RatesError]))
+      updated ← fromEither(updatedOrError)
+    } yield updated
 }

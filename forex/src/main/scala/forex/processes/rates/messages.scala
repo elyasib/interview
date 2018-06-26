@@ -1,24 +1,24 @@
 package forex.processes.rates
 
+import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import forex.domain._
+import io.circe.Json
+
 import scala.util.control.NoStackTrace
 
 package messages {
 
-  import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport
-  import io.circe.Json
+  sealed trait AppError extends Throwable with NoStackTrace
 
-  sealed trait Error extends Throwable with NoStackTrace
-
-  object Error extends FailFastCirceSupport {
+  object AppError extends ErrorAccumulatingCirceSupport {
     import io.circe.Encoder
 
-    final case object Generic extends Error
-    final case class System(reason: String, underlying: Throwable) extends Error
-    final case class NotFound(reason: String) extends Error
-    final case class BadRequest(reason: String) extends Error
+    final case object Generic extends AppError
+    final case class System(reason: String, underlying: Throwable) extends AppError
+    final case class NotFound(reason: String) extends AppError
+    final case class BadRequest(reason: String) extends AppError
 
-    implicit def toJson[E <: Error]: Encoder[E] = new Encoder[E] {
+    implicit def toJson[E <: AppError]: Encoder[E] = new Encoder[E] {
       override def apply(error: E): Json = error match {
         case Generic ⇒
           makeJsonError("Error in the rates process", true)

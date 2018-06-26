@@ -1,21 +1,21 @@
 package forex.processes.rates
 
-import forex.services.oneforge.OneForgeError
+import forex.services.oneforge.RatesError
 
 package object converters {
   import messages._
 
-  def toProcessError[T <: Throwable](t: T): Error = t match {
-    case OneForgeError.Generic ⇒
-      Error.Generic
-    case OneForgeError.System(reason, err) ⇒
-      Error.System(reason, err)
-    case OneForgeError.NotFound(reason) ⇒
-      Error.NotFound(reason)
-    case e: Error ⇒
+  def toProcessError[T <: Throwable](t: T): AppError = t match {
+    case RatesError.Generic ⇒
+      AppError.Generic
+    case RatesError.System(reason, err) ⇒
+      AppError.System(reason, err)
+    case RatesError.NotFound(reason) ⇒
+      AppError.NotFound(reason)
+    case e: AppError ⇒
       e
     case e ⇒
-      Error.System(e.getMessage, e)
+      AppError.System(e.getMessage, e)
   }
 
 }

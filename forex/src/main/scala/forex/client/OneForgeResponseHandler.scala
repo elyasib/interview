@@ -10,10 +10,11 @@ import Rate.Pair
 import Currency.fromString
 import ClientError._
 import cats.implicits._
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object OneForgeResponseHandler {
+object OneForgeResponseHandler extends LazyLogging {
   type Rates = Seq[Rate]
   type Quotes = Seq[OneForgeApiQuote]
 

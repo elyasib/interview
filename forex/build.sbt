@@ -1,7 +1,7 @@
 name := "forex"
 version := "1.0.0"
 
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.6"
 scalacOptions ++= Seq(
   "-deprecation",
   "-encoding",
@@ -31,8 +31,8 @@ libraryDependencies ++= Seq(
   "io.circe"                       %% "circe-java8"          % "0.8.0",
   "io.circe"                       %% "circe-jawn"           % "0.8.0",
   "io.circe"                       %% "circe-parser"         % "0.8.0",
-  "org.atnos"                      %% "eff"                  % "4.5.0",
-  "org.atnos"                      %% "eff-monix"            % "4.5.0",
+  "org.atnos"                      %% "eff"                  % "4.6.1",
+  "org.atnos"                      %% "eff-monix"            % "4.6.1",
   "io.monix"                       %% "monix-eval"           % "2.3.3",
   "io.monix"                       %% "monix-cats"           % "2.3.3",
   "org.typelevel"                  %% "cats-core"            % "0.9.0",
